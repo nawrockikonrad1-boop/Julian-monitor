@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Julian Monitor">
+<title>Julian Monitor — Stock Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+/* ── RESET ───────────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+
+/* ── TOKENS ──────────────────────────────────────────────────── */
+:root{
+  --bg:#080A0F;
+  --bg2:#0D1018;
+  --panel:#0F1218;
+  --panel2:#141820;
+  --bd:rgba(255,255,255,0.06);
+  --bd2:rgba(255,255,255,0.1);
+  --tx:#E8EDF5;
+  --mu:#5A6478;
+  --dim:#2E3444;
+  --green:#00E5A0;
+  --green2:#00B87A;
+  --green-glow:rgba(0,229,160,0.15);
+  --amber:#FFB800;
+  --amber-glow:rgba(255,184,0,0.12);
+  --red:#FF4560;
+  --blue:#3D8EFF;
+  --blue-glow:rgba(61,142,255,0.12);
+  --gold:#D4A843;
+  --mono:'Space Mono',monospace;
+  --sans:'Syne',sans-serif;
+}
+
+/* ── BASE ─────────────────────────────────────────────────────── */
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--tx);
+  font-family:var(--sans);
+  font-size:14px;
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ── ANIMATED BG GRID ─────────────────────────────────────────── */
+body::before{
+  content:'';
+  position:fixed;
+  inset:0;
+  background-image:
+    linear-gradient(rgba(0,229,160,0.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,229,160,0.03) 1px,transparent 1px);
+  background-size:48px 48px;
+  pointer-events:none;
+  z-index:0;
+  animation:gridMove 20s linear infinite;
+}
+@keyframes gridMove{to{background-position:48px 48px}}
+
+body::after{
+  content:'';
+  position:fixed;
+  inset:0;
+  background:radial-gradient(ellipse 60% 40% at 50% 0%,rgba(0,229,160,0.06) 0%,transparent 70%);
+  pointer-events:none;
+  z-index:0;
+}
+
+/* ── TICKER TAPE ──────────────────────────────────────────────── */
+.ticker-tape{
+  position:fixed;top:0;left:0;right:0;
+  height:28px;
+  background:rgba(0,0,0,0.9);
+  border-bottom:1px solid rgba(0,229,160,0.2);
+  overflow:hidden;
+  z-index:200;
+  display:flex;align-items:center;
+}
+.ticker-inner{
+  display:flex;
+  gap:0;
+  white-space:nowrap;
+  animation:tickerScroll 30s linear infinite;
+}
+@keyframes tickerScroll{
+  0%{transform:translateX(0)}
+  100%{transform:translateX(-50%)}
+}
+.tick-item{
+  font-family:var(--mono);
+  font-size:10px;
+  padding:0 20px;
+  border-right:1px solid var(--dim);
+  display:flex;align-items:center;gap:6px;
+}
+.tick-sym{color:var(--tx);font-weight:700}
+.tick-up{color:var(--green)}
+.tick-dn{color:var(--red)}
+
+/* ── HEADER ───────────────────────────────────────────────────── */
+.hdr{
+  position:sticky;top:28px;z-index:100;
+  background:rgba(8,10,15,0.85);
+  backdrop-filter:blur(24px);
+  -webkit-backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--bd2);
+  padding:0 28px;
+  display:flex;align-items:center;justify-content:space-between;
+  height:64px;
+  position:relative;z-index:100;
+}
+.hdr::after{
+  content:'';
+  position:absolute;bottom:0;left:0;right:0;height:1px;
+  background:linear-gradient(90deg,transparent,var(--green),transparent);
+  opacity:0.4;
+}
+.hdr-brand{display:flex;align-items:center;gap:14px}
+.hdr-logo{
+  width:38px;height:38px;
+  border:1px solid rgba(0,229,160,0.4);
+  border-radius:10px;
+  display:flex;align-items:center;justify-content:center;
+  background:rgba(0,229,160,0.08);
+  position:relative;
+  box-shadow:0 0 20px rgba(0,229,160,0.15);
+}
+.hdr-logo::before{
+  content:'';
+  position:absolute;inset:-1px;
+  border-radius:11px;
+  background:linear-gradient(135deg,rgba(0,229,160,0.4),transparent);
+  z-index:-1;
+}
+.logo-icon{font-size:18px}
+.hdr-title{font-size:18px;font-weight:800;letter-spacing:-0.5px;color:var(--tx)}
+.hdr-title span{color:var(--green)}
+.hdr-sub{font-size:10px;color:var(--mu);font-family:var(--mono);margin-top:2px;letter-spacing:0.05em}
+.hdr-right{display:flex;align-items:center;gap:16px}
+.live-pill{
+  display:flex;align-items:center;gap:7px;
+  background:rgba(0,229,160,0.08);
+  border:1px solid rgba(0,229,160,0.25);
+  border-radius:20px;
+  padding:5px 12px;
+  font-size:11px;font-family:var(--mono);
+  color:var(--green);
+  letter-spacing:0.05em;
+}
+.live-dot{
+  width:7px;height:7px;border-radius:50%;
+  background:var(--green);
+  box-shadow:0 0 8px var(--green);
+  animation:livePulse 1.5s ease-in-out infinite;
+}
+@keyframes livePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.8)}}
+.scan-indicator{
+  display:none;align-items:center;gap:8px;
+  font-size:11px;color:var(--mu);font-family:var(--mono);
+}
+.scan-indicator.show{display:flex}
+.spin-ring{
+  width:16px;height:16px;
+  border:2px solid var(--dim);
+  border-top-color:var(--green);
+  border-radius:50%;
+  animation:spin 0.7s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── MAIN WRAP ────────────────────────────────────────────────── */
+.wrap{
+  position:relative;z-index:1;
+  max-width:1100px;margin:0 auto;
+  padding:28px 24px 60px;
+}
+
+/* ── ALERT BANNER ─────────────────────────────────────────────── */
+.alert-banner{
+  border-radius:12px;padding:16px 20px;
+  margin-bottom:28px;
+  display:flex;align-items:flex-start;gap:14px;
+  animation:slideDown 0.4s ease;
+}
+@keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+.alert-banner.warn{
+  background:linear-gradient(135deg,rgba(255,184,0,0.08),rgba(255,184,0,0.04));
+  border:1px solid rgba(255,184,0,0.25);
+}
+.alert-banner.ok{
+  background:linear-gradient(135deg,rgba(0,229,160,0.08),rgba(0,229,160,0.04));
+  border:1px solid rgba(0,229,160,0.25);
+}
+.banner-icon{font-size:20px;flex-shrink:0;margin-top:2px}
+.banner-title{font-size:13px;font-weight:700;margin-bottom:5px}
+.banner-title.warn-c{color:var(--amber)}
+.banner-title.ok-c{color:var(--green)}
+.banner-body{font-size:12px;color:var(--mu);line-height:1.8}
+code{
+  background:rgba(0,229,160,0.1);
+  border:1px solid rgba(0,229,160,0.2);
+  color:var(--green);
+  padding:2px 7px;border-radius:4px;
+  font-family:var(--mono);font-size:10px;
+}
+
+/* ── STATS ROW ────────────────────────────────────────────────── */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+.stat{
+  background:var(--panel);
+  border:1px solid var(--bd);
+  border-radius:14px;
+  padding:20px;
+  position:relative;overflow:hidden;
+  transition:border-color 0.2s,transform 0.2s;
+  cursor:default;
+}
+.stat:hover{border-color:var(--bd2);transform:translateY(-2px)}
+.stat::before{
+  content:'';position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent,var(--green)),transparent);
+  opacity:0.6;
+}
+.stat-n{
+  font-size:32px;font-weight:800;
+  font-family:var(--mono);
+  line-height:1;
+  margin-bottom:6px;
+}
+.stat-l{font-size:10px;color:var(--mu);text-transform:uppercase;letter-spacing:0.1em;font-weight:600}
+.stat-bar{
+  height:2px;background:var(--dim);border-radius:1px;margin-top:12px;
+}
+.stat-bar-fill{height:100%;border-radius:1px;background:var(--accent,var(--green));width:0%;transition:width 1s ease}
+
+/* ── SOURCES ──────────────────────────────────────────────────── */
+.sources-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:24px}
+.source-chip{
+  display:flex;align-items:center;gap:8px;
+  background:var(--panel);
+  border:1px solid var(--bd);
+  border-radius:20px;
+  padding:7px 16px;
+  font-size:11px;font-family:var(--mono);
+  transition:border-color 0.2s;
+}
+.source-chip:hover{border-color:var(--bd2)}
+.src-dot{
+  width:7px;height:7px;border-radius:50%;
+  box-shadow:0 0 8px currentColor;
+}
+.src-green{background:var(--green);color:var(--green)}
+.src-amber{background:var(--amber);color:var(--amber)}
+
+/* ── ACTION BUTTONS ───────────────────────────────────────────── */
+.actions{display:flex;gap:10px;margin-bottom:28px;flex-wrap:wrap}
+.btn{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:12px 22px;
+  border-radius:10px;
+  font-size:13px;font-weight:700;font-family:var(--sans);
+  cursor:pointer;border:none;
+  transition:all 0.2s;
+  position:relative;overflow:hidden;
+}
+.btn::after{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(255,255,255,0.08),transparent);
+  opacity:0;transition:opacity 0.2s;
+}
+.btn:hover::after{opacity:1}
+.btn:active{transform:scale(0.97)}
+.btn-green{
+  background:linear-gradient(135deg,var(--green),var(--green2));
+  color:#000;
+  box-shadow:0 4px 20px rgba(0,229,160,0.3);
+}
+.btn-green:hover{box-shadow:0 6px 28px rgba(0,229,160,0.45);transform:translateY(-1px)}
+.btn-green:disabled{opacity:0.6;transform:none;box-shadow:none;cursor:not-allowed}
+.btn-ghost{
+  background:var(--panel);
+  color:var(--blue);
+  border:1px solid rgba(61,142,255,0.3);
+  box-shadow:0 0 0 0 var(--blue-glow);
+}
+.btn-ghost:hover{border-color:var(--blue);box-shadow:0 0 20px var(--blue-glow)}
+
+/* ── SECTION LABEL ────────────────────────────────────────────── */
+.sec-label{
+  font-size:10px;font-weight:700;
+  color:var(--mu);
+  text-transform:uppercase;letter-spacing:0.12em;
+  margin-bottom:12px;
+  display:flex;align-items:center;gap:8px;
+}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--bd)}
+
+/* ── TWO-COL GRID ─────────────────────────────────────────────── */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px}
+
+/* ── STOCK CARDS ──────────────────────────────────────────────── */
+.stock-card{
+  background:var(--panel);
+  border:1px solid var(--bd);
+  border-radius:14px;
+  padding:16px 18px;
+  margin-bottom:8px;
+  display:flex;align-items:center;gap:14px;
+  transition:all 0.2s;
+  position:relative;overflow:hidden;
+  animation:fadeUp 0.4s ease both;
+}
+.stock-card:hover{
+  border-color:var(--bd2);
+  background:var(--panel2);
+  transform:translateX(3px);
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.stock-card.strong::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--green),var(--green2));
+  box-shadow:0 0 12px rgba(0,229,160,0.5);
+}
+.stock-card.watch::before{
+  content:'';position:absolute;left:0;top:0;bottom:0;width:3px;
+  background:linear-gradient(180deg,var(--amber),#cc9200);
+  box-shadow:0 0 12px rgba(255,184,0,0.4);
+}
+.stock-ticker{
+  font-size:18px;font-weight:800;
+  font-family:var(--mono);
+  letter-spacing:-0.5px;
+  min-width:58px;
+}
+.stock-name{font-size:11px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
+.stock-price{font-size:11px;color:var(--mu);margin-top:2px;font-family:var(--mono)}
+.stock-right{text-align:right;flex-shrink:0}
+.upside{font-size:11px;margin-top:4px;font-family:var(--mono);font-weight:700}
+.qdots{display:flex;gap:4px;justify-content:flex-end;margin-top:6px}
+.qdot{
+  width:9px;height:9px;border-radius:50%;
+  transition:transform 0.2s;
+}
+.stock-card:hover .qdot{transform:scale(1.2)}
+.qp{background:var(--green);box-shadow:0 0 6px rgba(0,229,160,0.5)}
+.qf{background:var(--dim)}
+
+/* ── BADGES ───────────────────────────────────────────────────── */
+.badge{
+  display:inline-flex;align-items:center;
+  font-size:10px;font-weight:700;
+  padding:3px 10px;border-radius:20px;
+  font-family:var(--mono);letter-spacing:0.04em;
+}
+.b-green{background:rgba(0,229,160,0.12);color:var(--green);border:1px solid rgba(0,229,160,0.25)}
+.b-amber{background:rgba(255,184,0,0.12);color:var(--amber);border:1px solid rgba(255,184,0,0.25)}
+.b-red{background:rgba(255,69,96,0.12);color:var(--red);border:1px solid rgba(255,69,96,0.25)}
+.b-blue{background:rgba(61,142,255,0.12);color:var(--blue);border:1px solid rgba(61,142,255,0.25)}
+.b-dim{background:var(--dim);color:var(--mu)}
+
+/* ── FEED CARD ────────────────────────────────────────────────── */
+.feed-card{
+  background:var(--panel);
+  border:1px solid var(--bd);
+  border-radius:14px;
+  overflow:hidden;
+  margin-bottom:16px;
+}
+.feed-item{
+  padding:14px 18px;
+  border-bottom:1px solid var(--bd);
+  transition:background 0.15s;
+  animation:fadeUp 0.3s ease both;
+}
+.feed-item:last-child{border-bottom:none}
+.feed-item:hover{background:var(--panel2)}
+.feed-src{
+  font-size:9px;font-weight:700;
+  text-transform:uppercase;letter-spacing:0.1em;
+  color:var(--mu);margin-bottom:5px;
+  font-family:var(--mono);
+}
+.feed-title{font-size:13px;color:var(--tx);line-height:1.5;margin-bottom:8px}
+.feed-tickers{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.feed-ticker{
+  font-size:11px;font-weight:700;
+  background:rgba(0,229,160,0.08);
+  color:var(--green);
+  border:1px solid rgba(0,229,160,0.2);
+  padding:2px 9px;border-radius:6px;
+  font-family:var(--mono);
+  transition:all 0.15s;
+}
+.feed-ticker:hover{background:rgba(0,229,160,0.15)}
+.feed-footer{display:flex;align-items:center;justify-content:space-between}
+.feed-time{font-size:10px;color:var(--mu);font-family:var(--mono)}
+.feed-link{
+  font-size:10px;color:var(--blue);text-decoration:none;
+  font-family:var(--mono);
+  transition:color 0.15s;
+}
+.feed-link:hover{color:#6ba8ff}
+
+/* ── EMAIL LOG ────────────────────────────────────────────────── */
+.email-card{
+  background:var(--panel);border:1px solid var(--bd);border-radius:14px;overflow:hidden;margin-bottom:16px;
+}
+.email-row{
+  padding:14px 18px;border-bottom:1px solid var(--bd);
+  display:flex;align-items:center;justify-content:space-between;gap:14px;
+  transition:background 0.15s;
+}
+.email-row:last-child{border-bottom:none}
+.email-row:hover{background:var(--panel2)}
+.email-subject{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.email-meta{font-size:10px;color:var(--mu);margin-top:3px;font-family:var(--mono)}
+
+/* ── EMPTY STATE ──────────────────────────────────────────────── */
+.empty{text-align:center;padding:40px 24px;color:var(--mu)}
+.empty-icon{font-size:40px;margin-bottom:10px;opacity:0.5}
+.empty-title{font-size:14px;font-weight:700;color:var(--tx);margin-bottom:6px}
+.empty-sub{font-size:12px;line-height:1.7;max-width:260px;margin:0 auto}
+
+/* ── SCAN PROGRESS BAR ────────────────────────────────────────── */
+.progress-wrap{
+  display:none;
+  background:var(--panel);border:1px solid rgba(0,229,160,0.2);
+  border-radius:12px;padding:16px 18px;margin-bottom:20px;
+  animation:slideDown 0.3s ease;
+}
+.progress-wrap.show{display:block}
+.progress-label{
+  font-size:11px;font-family:var(--mono);
+  color:var(--green);margin-bottom:10px;
+  display:flex;align-items:center;gap:8px;
+}
+.progress-bar{height:3px;background:var(--dim);border-radius:2px;overflow:hidden}
+.progress-fill{
+  height:100%;width:0%;
+  background:linear-gradient(90deg,var(--green2),var(--green));
+  border-radius:2px;
+  box-shadow:0 0 10px rgba(0,229,160,0.4);
+  transition:width 2s ease;
+  animation:shimmer 1.5s linear infinite;
+  background-size:200% 100%;
+  background-image:linear-gradient(90deg,var(--green2),var(--green),#00ffb9,var(--green2));
+}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ── GLOW NUMBER ANIMATION ────────────────────────────────────── */
+@keyframes numGlow{
+  0%{text-shadow:0 0 20px currentColor}
+  100%{text-shadow:none}
+}
+.num-updated{animation:numGlow 1.5s ease}
+
+/* ── RESPONSIVE ───────────────────────────────────────────────── */
+@media(max-width:700px){
+  .stats{grid-template-columns:1fr 1fr}
+  .grid2{grid-template-columns:1fr}
+  .hdr{padding:0 16px}
+  .wrap{padding:20px 14px 60px}
+  .ticker-tape{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- TICKER TAPE -->
+<div class="ticker-tape">
+  <div class="ticker-inner" id="ticker-inner">
+    {% set demo_tickers = [('NVDA','$134.22','+2.1%',True),('RKLB','$28.45','+5.3%',True),('FLY','$46.80','+1.8%',True),('ASTS','$18.90','-0.9%',False),('TSLA','$248.30','+3.2%',True),('PLTR','$82.10','+1.1%',True),('META','$612.40','+0.7%',True),('LUNR','$12.30','-2.1%',False),('COIN','$274.80','+4.2%',True),('CRWD','$390.20','+0.5%',True),('NVDA','$134.22','+2.1%',True),('RKLB','$28.45','+5.3%',True),('FLY','$46.80','+1.8%',True),('ASTS','$18.90','-0.9%',False),('TSLA','$248.30','+3.2%',True),('PLTR','$82.10','+1.1%',True)] %}
+    {% for sym, price, chg, up in demo_tickers %}
+    <div class="tick-item">
+      <span class="tick-sym">{{ sym }}</span>
+      <span style="color:var(--mu)">{{ price }}</span>
+      <span class="{% if up %}tick-up{% else %}tick-dn{% endif %}">{{ chg }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- HEADER -->
+<div class="hdr" style="top:28px;position:sticky;">
+  <div class="hdr-brand">
+    <div class="hdr-logo"><span class="logo-icon">📡</span></div>
+    <div>
+      <div class="hdr-title">Julian <span>Monitor</span></div>
+      <div class="hdr-sub" id="last-check-label">
+        {% if monitor_status.last_check %}LAST SCAN · {{ monitor_status.last_check[11:16] }} UTC{% else %}AWAITING FIRST SCAN{% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="scan-indicator {% if monitor_status.running %}show{% endif %}" id="scan-indicator">
+      <div class="spin-ring"></div>
+      <span id="step-label" style="font-size:10px;">SCANNING...</span>
+    </div>
+    <div class="live-pill">
+      <div class="live-dot"></div>
+      LIVE
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="wrap">
+
+  <!-- BANNER -->
+  {% if not configured %}
+  <div class="alert-banner warn" style="animation-delay:0.1s">
+    <span class="banner-icon">⚠️</span>
+    <div>
+      <div class="banner-title warn-c">Email alerts not configured</div>
+      <div class="banner-body">
+        Add these 3 variables in Railway → Variables tab to activate email alerts:<br><br>
+        <code>EMAIL_FROM</code> &nbsp;your Gmail address &nbsp;·&nbsp;
+        <code>EMAIL_PASS</code> &nbsp;Gmail App Password &nbsp;·&nbsp;
+        <code>EMAIL_TO</code> &nbsp;your inbox<br><br>
+        Get App Password: Google Account → Security → 2-Step Verification → App Passwords
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert-banner ok" style="animation-delay:0.1s">
+    <span class="banner-icon">✅</span>
+    <div>
+      <div class="banner-title ok-c">System active — email alerts enabled</div>
+      <div class="banner-body">Monitoring Julian's YouTube and X every hour. Stocks that pass his 5-question framework trigger an instant email to your inbox.</div>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- STATS -->
+  <div class="stats">
+    <div class="stat" style="--accent:var(--blue)">
+      <div class="stat-n" style="color:var(--blue)" id="stat-posts">{{ feed_items|length }}</div>
+      <div class="stat-l">Posts Monitored</div>
+      <div class="stat-bar"><div class="stat-bar-fill" data-val="60" style="background:var(--blue)"></div></div>
+    </div>
+    <div class="stat" style="--accent:var(--mu)">
+      <div class="stat-n" style="color:var(--tx)" id="stat-scored">{{ scored_stocks|length }}</div>
+      <div class="stat-l">Stocks Scored</div>
+      <div class="stat-bar"><div class="stat-bar-fill" data-val="45"></div></div>
+    </div>
+    <div class="stat" style="--accent:var(--green)">
+      <div class="stat-n" style="color:var(--green)" id="stat-strong">{{ strong_buys|length }}</div>
+      <div class="stat-l">Strong Buys</div>
+      <div class="stat-bar"><div class="stat-bar-fill" data-val="80"></div></div>
+    </div>
+    <div class="stat" style="--accent:var(--amber)">
+      <div class="stat-n" style="color:var(--amber)" id="stat-emails">{{ emails_sent }}</div>
+      <div class="stat-l">Emails Sent</div>
+      <div class="stat-bar"><div class="stat-bar-fill" data-val="35" style="background:var(--amber)"></div></div>
+    </div>
+  </div>
+
+  <!-- SOURCES -->
+  <div class="sec-label">Monitoring Julian's Channels</div>
+  <div class="sources-row">
+    <div class="source-chip"><div class="src-dot src-green"></div>YouTube @julianjune</div>
+    <div class="source-chip"><div class="src-dot src-green"></div>YouTube Extended</div>
+    <div class="source-chip"><div class="src-dot {% if has_x %}src-green{% else %}src-amber{% endif %}"></div>
+      X @julianpetroulas{% if not has_x %} <span style="color:var(--mu);font-size:9px;">(optional)</span>{% endif %}
+    </div>
+    <div class="source-chip" style="color:var(--mu);font-size:10px;border-style:dashed">
+      + Instagram scraping coming soon
+    </div>
+  </div>
+
+  <!-- ACTIONS -->
+  <div class="actions">
+    <button class="btn btn-green" id="run-btn" onclick="runNow()">
+      <span id="run-spinner" class="spin-ring" style="display:none;border-color:rgba(0,0,0,0.2);border-top-color:#000"></span>
+      <span id="run-label">▶ &nbsp;Scan Julian's Channels Now</span>
+    </button>
+    {% if configured %}
+    <button class="btn btn-ghost" onclick="testEmail()">✉ &nbsp;Send Test Email</button>
+    {% endif %}
+  </div>
+
+  <!-- PROGRESS BAR -->
+  <div class="progress-wrap {% if monitor_status.running %}show{% endif %}" id="progress-wrap">
+    <div class="progress-label">
+      <div class="spin-ring"></div>
+      <span id="progress-step">Initializing scan...</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+  </div>
+
+  <!-- STRONG BUYS + WATCHLIST -->
+  <div class="grid2">
+    <div>
+      <div class="sec-label">🚀 Strong Buy Signals</div>
+      {% if strong_buys %}
+        {% for s in strong_buys %}
+        <div class="stock-card strong" style="animation-delay:{{ loop.index0 * 0.05 }}s">
+          <div style="flex:1;min-width:0">
+            <div class="stock-ticker">{{ s.ticker }}</div>
+            <div class="stock-name">{{ s.name[:24] if s.name else '' }}</div>
+            <div class="stock-price">${{ s.price }} &nbsp;·&nbsp; ${{ s.market_cap_b }}B cap</div>
+          </div>
+          <div class="stock-right">
+            <span class="badge b-green">STRONG BUY</span>
+            <div class="upside" style="color:var(--green)">+{{ s.analyst_upside }}%</div>
+            <div class="qdots">
+              {% for q in ['q1','q2','q3','q4','q5'] %}
+                {% if s[q] is defined %}<div class="qdot {% if s[q].pass %}qp{% else %}qf{% endif %}"></div>{% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="feed-card">
+          <div class="empty">
+            <div class="empty-icon">🔍</div>
+            <div class="empty-title">No strong buys yet</div>
+            <div class="empty-sub">Run a scan to check Julian's latest posts for stocks scoring 4–5/5</div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+
+    <div>
+      <div class="sec-label">👁 Watchlist Signals</div>
+      {% if watchlist_stocks %}
+        {% for s in watchlist_stocks %}
+        <div class="stock-card watch" style="animation-delay:{{ loop.index0 * 0.05 }}s">
+          <div style="flex:1;min-width:0">
+            <div class="stock-ticker">{{ s.ticker }}</div>
+            <div class="stock-name">{{ s.name[:24] if s.name else '' }}</div>
+            <div class="stock-price">${{ s.price }} &nbsp;·&nbsp; ${{ s.market_cap_b }}B cap</div>
+          </div>
+          <div class="stock-right">
+            <span class="badge b-amber">WATCHLIST</span>
+            <div class="upside" style="color:var(--amber)">+{{ s.analyst_upside }}%</div>
+            <div class="qdots">
+              {% for q in ['q1','q2','q3','q4','q5'] %}
+                {% if s[q] is defined %}<div class="qdot {% if s[q].pass %}qp{% else %}qf{% endif %}"></div>{% endif %}
+              {% endfor %}
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="feed-card">
+          <div class="empty">
+            <div class="empty-icon">📋</div>
+            <div class="empty-title">No watchlist signals</div>
+            <div class="empty-sub">Stocks Julian mentions that score 3/5 on his framework appear here</div>
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- JULIAN'S FEED -->
+  <div class="sec-label">Julian's Latest Posts — Tickers Detected</div>
+  <div class="feed-card">
+    {% if feed_items %}
+      {% for item in feed_items[:15] %}
+      <div class="feed-item" style="animation-delay:{{ loop.index0 * 0.04 }}s">
+        <div class="feed-src">{{ item.source }} &nbsp;·&nbsp; {{ item.timestamp[5:10] }}</div>
+        <div class="feed-title">{{ item.title[:110] }}</div>
+        {% if item.tickers_found %}
+        <div class="feed-tickers">
+          {% for t in item.tickers_found %}<span class="feed-ticker">{{ t }}</span>{% endfor %}
+        </div>
+        {% else %}
+        <div style="font-size:10px;color:var(--mu);font-family:var(--mono);margin-bottom:6px;">No tickers detected</div>
+        {% endif %}
+        <div class="feed-footer">
+          <span class="feed-time">{{ item.timestamp[11:16] }} UTC</span>
+          <a class="feed-link" href="{{ item.url }}" target="_blank">View post →</a>
+        </div>
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">
+        <div class="empty-icon">📡</div>
+        <div class="empty-title">Awaiting first scan</div>
+        <div class="empty-sub">Hit "Scan Julian's Channels Now" to pull his latest YouTube videos and X posts</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- EMAIL LOG -->
+  <div class="sec-label">Email Alert Log</div>
+  <div class="email-card">
+    {% if email_log %}
+      {% for e in email_log %}
+      <div class="email-row">
+        <div style="flex:1;min-width:0">
+          <div class="email-subject">{{ e.subject }}</div>
+          <div class="email-meta">{{ e.source }} &nbsp;·&nbsp; {{ e.timestamp[5:16].replace("T"," ") }}</div>
+        </div>
+        {% if e.sent %}<span class="badge b-green">SENT ✓</span>
+        {% else %}<span class="badge b-red">FAILED</span>{% endif %}
+      </div>
+      {% endfor %}
+    {% else %}
+      <div class="empty">
+        <div class="empty-icon">📬</div>
+        <div class="empty-title">No emails yet</div>
+        <div class="empty-sub">Emails fire automatically when Julian mentions a stock scoring 3+/5</div>
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<script>
+// ── Animate stat bars on load ──────────────────────────────────
+window.addEventListener('load', () => {
+  document.querySelectorAll('.stat-bar-fill').forEach(el => {
+    setTimeout(() => { el.style.width = el.dataset.val + '%' }, 300)
+  })
+})
+
+// ── Run scan ───────────────────────────────────────────────────
+async function runNow() {
+  const btn    = document.getElementById('run-btn')
+  const spinner= document.getElementById('run-spinner')
+  const label  = document.getElementById('run-label')
+  const prog   = document.getElementById('progress-wrap')
+  const fill   = document.getElementById('progress-fill')
+  const step   = document.getElementById('progress-step')
+  btn.disabled = true
+  spinner.style.display = 'inline-block'
+  label.textContent = 'Scanning...'
+  prog.classList.add('show')
+  document.getElementById('scan-indicator').classList.add('show')
+  fill.style.width = '8%'
+  await fetch('/run', { method: 'POST' })
+  let pct = 8
+  const iv = setInterval(async () => {
+    try {
+      const r = await fetch('/api/status')
+      const d = await r.json()
+      if (d.current_step) {
+        step.textContent = d.current_step
+        document.getElementById('step-label').textContent = d.current_step.toUpperCase()
+        label.textContent = d.current_step
+      }
+      pct = Math.min(pct + 6, 92)
+      fill.style.width = pct + '%'
+      if (!d.running) {
+        clearInterval(iv)
+        fill.style.width = '100%'
+        setTimeout(() => location.reload(), 600)
+      }
+    } catch(e) {}
+  }, 2000)
+}
+
+// ── Test email ─────────────────────────────────────────────────
+async function testEmail() {
+  const r = await fetch('/test_email', { method: 'POST' })
+  const d = await r.json()
+  if (d.sent) {
+    showToast('✅ Test email sent! Check your inbox.')
+  } else {
+    showToast('❌ Email failed — verify your Gmail App Password in Railway variables.')
+  }
+}
+
+// ── Toast notification ─────────────────────────────────────────
+function showToast(msg) {
+  const t = document.createElement('div')
+  t.style.cssText = `
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+    background:#1a1a2e;border:1px solid rgba(0,229,160,0.3);
+    color:#e8edf5;padding:12px 22px;border-radius:10px;
+    font-family:'Space Mono',monospace;font-size:12px;
+    box-shadow:0 8px 32px rgba(0,0,0,0.5);
+    z-index:9999;transition:all 0.3s;opacity:0;
+  `
+  t.textContent = msg
+  document.body.appendChild(t)
+  setTimeout(() => { t.style.opacity='1'; t.style.transform='translateX(-50%) translateY(0)' }, 10)
+  setTimeout(() => { t.style.opacity='0'; t.style.transform='translateX(-50%) translateY(20px)'; setTimeout(()=>t.remove(),300) }, 3500)
+}
+
+// ── Auto-refresh ───────────────────────────────────────────────
+setInterval(async () => {
+  try {
+    const r = await fetch('/api/status')
+    const d = await r.json()
+    const ind = document.getElementById('scan-indicator')
+    if (d.running) {
+      ind.classList.add('show')
+      if (d.current_step) document.getElementById('step-label').textContent = d.current_step.toUpperCase()
+    } else {
+      ind.classList.remove('show')
+    }
+    if (d.last_check) {
+      document.getElementById('last-check-label').textContent = 'LAST SCAN · ' + d.last_check.substring(11,16) + ' UTC'
+    }
+  } catch(e) {}
+}, 10000)
+</script>
+</body>
+</html>
